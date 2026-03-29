@@ -9,6 +9,7 @@ class node:
     adjoint: float
     partials: list[float]
     parents: list[node]
+    tape: tape
 
     def propagate(self):
         if self.arity == 0 or self.adjoint == 0.00:
@@ -31,25 +32,20 @@ class tape:
     def clear(self) -> None:
         self.nodes = []
 
+    def from_nodes(self, value: float, nodes: list[node]) -> number:
+        n = node(len(nodes), 0.00, [], [], self)
 
-TAPE = tape(nodes=[])
+        if len(nodes) > 0:
+            n.parents = nodes
+            n.partials = [0.00 for _ in range(len(nodes))]
 
+        self.nodes.append(n)
+        num = number(value, n)
+        return num
 
-def from_nodes(value: float, nodes: list[node]) -> number:
-    n = node(len(nodes), 0.00, [], [])
-
-    if len(nodes) > 0:
-        n.parents = nodes
-        n.partials = [0.00 for _ in range(len(nodes))]
-
-    TAPE.nodes.append(n)
-    num = number(value, n)
-    return num
-
-
-def new_leaf(value: float) -> number:
-    np = node(0, 0.00, [], [])
-    return number(value, np)
+    def new_leaf(self, value: float) -> number:
+        np = node(0, 0.00, [], [], self)
+        return number(value, np)
 
 
 @dataclass
@@ -89,91 +85,99 @@ class number:
         return self * other
 
     def __neg__(self) -> number:
-        num = from_nodes(-(self.value), [self.node])
+        num = self.node.tape.from_nodes(-(self.value), [self.node])
         num.node.partials[0] = -1.00
         return num
 
     def __inv__(self) -> number:
-        num = from_nodes(1 / (self.value), [self.node])
+        num = self.node.tape.from_nodes(1 / (self.value), [self.node])
         num.node.partials[0] = -1 / self.value**2
         return num
 
     def add(self, other: number) -> number:
-        num = from_nodes(self.value + other.value, [self.node, other.node])
+        num = self.node.tape.from_nodes(
+            self.value + other.value, [self.node, other.node]
+        )
         num.node.partials[0] = 1.00
         num.node.partials[1] = 1.00
         return num
 
     def sub(self, other: number) -> number:
-        num = from_nodes(self.value - other.value, [self.node, other.node])
+        num = self.node.tape.from_nodes(
+            self.value - other.value, [self.node, other.node]
+        )
         num.node.partials[0] = 1.00
         num.node.partials[1] = -1.00
         return num
 
     def div(self, other: number) -> number:
-        num = from_nodes(self.value / other.value, [self.node, other.node])
+        num = self.node.tape.from_nodes(
+            self.value / other.value, [self.node, other.node]
+        )
         num.node.partials[0] = 1.00 / other.value
         num.node.partials[1] = -self.value / (other.value**2)
         return num
 
     def mul(self, other: number) -> number:
-        num = from_nodes(self.value * other.value, [self.node, other.node])
+        num = self.node.tape.from_nodes(
+            self.value * other.value, [self.node, other.node]
+        )
         num.node.partials[0] = other.value
         num.node.partials[1] = self.value
         return num
 
     def exp(self) -> number:
-        num = from_nodes(exp(self.value), [self.node])
+        num = self.node.tape.from_nodes(exp(self.value), [self.node])
         num.node.partials[0] = exp(self.value)
         return num
 
     def log(self) -> number:
-        num = from_nodes(log(self.value), [self.node])
+        num = self.node.tape.from_nodes(log(self.value), [self.node])
         num.node.partials[0] = 1.00 / self.value
         return num
 
     def sin(self) -> number:
-        num = from_nodes(sin(self.value), [self.node])
+        num = self.node.tape.from_nodes(sin(self.value), [self.node])
         num.node.partials[0] = cos(self.value)
         return num
 
     def cos(self) -> number:
-        num = from_nodes(cos(self.value), [self.node])
+        num = self.node.tape.from_nodes(cos(self.value), [self.node])
         num.node.partials[0] = -sin(self.value)
         return num
 
     def sqrt(self) -> number:
-        num = from_nodes(sqrt(self.value), [self.node])
+        num = self.node.tape.from_nodes(sqrt(self.value), [self.node])
         num.node.partials[0] = 0.50 / sqrt(self.value)
         return num
 
     def square(self) -> number:
-        num = from_nodes(self.value**2, [self.node])
+        num = self.node.tape.from_nodes(self.value**2, [self.node])
         num.node.partials[0] = 2.00 * self.value
         return num
 
     def add_scalar(self, other: float | int) -> number:
-        num = from_nodes(self.value + other, [self.node])
+        num = self.node.tape.from_nodes(self.value + other, [self.node])
         num.node.partials[0] = 1.00
         return num
 
     def div_scalar(self, other: float | int) -> number:
-        num = from_nodes(self.value / other, [self.node])
+        num = self.node.tape.from_nodes(self.value / other, [self.node])
         num.node.partials[0] = 1.00 / other
         return num
 
     def mul_scalar(self, other: float | int) -> number:
-        num = from_nodes(self.value * other, [self.node])
+        num = self.node.tape.from_nodes(self.value * other, [self.node])
         num.node.partials[0] = other
         return num
 
     def norm_cdf(self) -> number:
-        num = from_nodes(normal_cdf(self.value), [self.node])
+        num = self.node.tape.from_nodes(normal_cdf(self.value), [self.node])
         num.node.partials[0] = normal_pdf(self.value)
         return num
 
     def norm_pdf(self) -> number:
-        num = from_nodes(normal_pdf(self.value), [self.node])
+        num = self.node.tape.from_nodes(normal_pdf(self.value), [self.node])
         num.node.partials[0] = -self.value * normal_pdf(self.value)
         return num
 
@@ -182,7 +186,9 @@ class number:
 
     def max(self, other: number | float | int) -> number:
         if type(other) == number:
-            num = from_nodes(max(self.value, other.value), [self.node, other.node])
+            num = self.node.tape.from_nodes(
+                max(self.value, other.value), [self.node, other.node]
+            )
             if self.value > other.value:
                 num.node.partials[0] = 1.00
                 num.node.partials[1] = 0.00
@@ -192,7 +198,7 @@ class number:
             return num
 
         elif type(other) == int or type(other) == float:
-            num = from_nodes(max(self.value, other), [self.node])
+            num = self.node.tape.from_nodes(max(self.value, other), [self.node])
             if self.value > other:
                 num.node.partials[0] = 1.00
             else:
