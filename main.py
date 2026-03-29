@@ -45,8 +45,8 @@ def bs_analytic(
     TAPE.backprop()
     TAPE.clear()
 
-    delta = spot.node.n.adjoint.v
-    vega = vol.node.n.adjoint.v
+    delta = spot.node.adjoint
+    vega = vol.node.adjoint
 
     # could also get Rho or Theta
 
@@ -86,11 +86,11 @@ def bs_montecarlo(
         TAPE.seed()
         TAPE.backprop()
 
-        delta = spot.node.n.adjoint
-        vega = vol.node.n.adjoint
+        delta = spot.node.adjoint
+        vega = vol.node.adjoint
 
-        deltas.append(delta.v)
-        vegas.append(vega.v)
+        deltas.append(delta)
+        vegas.append(vega)
 
     delta = sum(deltas) / num_paths
     pv = sum(payoffs) / num_paths
