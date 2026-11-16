@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from math import log, exp, sqrt, sin, cos, erf, pi
+from typing import SupportsFloat
 
 
 @dataclass
@@ -53,33 +54,39 @@ class number:
     value: float
     node: node
 
-    def __add__(self, other: number | float | int) -> number:
+    def __add__(self, other: number | SupportsFloat) -> number:
         if type(other) == number:
             return self.add(other)
         elif type(other) == int or type(other) == float:
             return self.add_scalar(other)
         assert False
 
-    def __sub__(self, other: number | float | int) -> number:
+    def __sub__(self, other: number | SupportsFloat) -> number:
         if type(other) == number:
             return self.sub(other)
         elif type(other) == int or type(other) == float:
             return self.add_scalar(-other)
         assert False
 
-    def __mul__(self, other: number | float | int) -> number:
+    def __mul__(self, other: number | SupportsFloat) -> number:
         if type(other) == number:
             return self.mul(other)
         elif type(other) == int or type(other) == float:
             return self.mul_scalar(other)
         assert False
 
-    def __truediv__(self, other: number | float | int) -> number:
-        if type(other) == number:
+    def __truediv__(self, other: number | SupportsFloat) -> number:
+        if isinstance(other, number):
             return self.div(other)
-        elif type(other) == int or type(other) == float:
-            return self.div_scalar(other)
-        assert False
+
+        try:
+            value = float(other)
+        except (ValueError, TypeError):
+            raise TypeError(
+                f"unsupported type: {other} (type: {type(other)})"
+            ) from None
+
+        return self.div_scalar(value)
 
     def __rmul__(self, other: float | int) -> number:
         return self * other
