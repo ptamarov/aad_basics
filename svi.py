@@ -48,11 +48,6 @@ class SliceSVI:
             guess,
             jac="2-point",
             method="trf",
-            # no lower bound on a: admissibility is checked after the fit
-            bounds=(
-                (-np.inf, 1e-4, -1, -np.inf, 1e-4),
-                (np.inf, np.inf, 1, np.inf, 100),
-            ),
         )
 
         self.fit_result = result  # type: ignore
@@ -64,7 +59,9 @@ class SliceSVI:
         a, b, r, _, s = self.params
         self.min_variance = a + b * s * np.sqrt(1 - r**2)
         if self.min_variance < 0:
-            warnings.warn(f"SVI fit has negative minimum variance {self.min_variance:.3e}")
+            warnings.warn(
+                f"SVI fit has negative minimum variance {self.min_variance:.3e}"
+            )
 
     # we compute bs_price but use the IVs provided by the SliceSVI.
 

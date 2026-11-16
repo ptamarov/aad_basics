@@ -1,8 +1,7 @@
-from aad import new_leaf, TAPE
 import numpy as np
 import seaborn as sns
 import pandas as pd
-from aad import number
+from aad import number, tape
 
 sns.set_style("whitegrid")
 
@@ -27,7 +26,7 @@ def my_plot(df: pd.DataFrame, x: str, y: str):
 
 
 def bs_analytic(
-    spot: number, strike: number, vol: number, rate: number, ttm: number
+    tape: tape, spot: number, strike: number, vol: number, rate: number, ttm: number
 ) -> list[float]:
 
     df = (-rate * ttm).exp()
@@ -41,9 +40,9 @@ def bs_analytic(
     out = (fwd * z1.norm_cdf() - strike * z2.norm_cdf()) * df
     pv = out.value
 
-    TAPE.seed()
-    TAPE.backprop()
-    TAPE.clear()
+    tape.seed()
+    tape.backprop()
+    tape.clear()
 
     delta = spot.node.adjoint
     vega = vol.node.adjoint
@@ -54,6 +53,7 @@ def bs_analytic(
 
 
 def bs_montecarlo(
+    tape: tape,
     S: float,
     K: float,
     bsvol: float,
@@ -71,10 +71,10 @@ def bs_montecarlo(
 
     for _ in range(num_paths):
 
-        TAPE.clear()  # clear the tape for each path
-        spot = new_leaf(S)
-        vol = new_leaf(bsvol)
-        drift = new_leaf(rate) - 0.50 * vol * vol  # forward
+        tape.clear()  # clear the tape for each path
+        spot = tape.new_leaf(S)
+        vol = tape.new_leaf(bsvol)
+        drift = tape.new_leaf(rate) - 0.50 * vol * vol  # forward
         logspot = spot.log()
         sqrtT = float(np.sqrt(T))
         noise = rng.normal()
@@ -83,8 +83,8 @@ def bs_montecarlo(
         payoff = (endval - K).max(0.00)
         payoffs.append(payoff.value)
 
-        TAPE.seed()
-        TAPE.backprop()
+        tape.seed()
+        tape.backprop()
 
         delta = spot.node.adjoint
         vega = vol.node.adjoint
